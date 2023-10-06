@@ -19,14 +19,11 @@ class App {
         })
 
         this.socketIo.on("connection", socket => {
-            console.log("usuario conectado")
-
             socket.on("disconnect", () => {
                 console.log("usuário desconectado")
             })
 
             socket.on("message", (message) => {
-                console.log(message)
                 this.socketIo.emit('message', message)
             })
         })
