@@ -14,34 +14,60 @@ class App {
     constructor () {
         this.app = express()
         this.app.use(express.json());
-        this.app.use(cors())
         this.server = createServer(this.app)
+        this.app.use(cors())
         this.socketIo = new Io(this.server, {
             cors: {
                 origin: "*"
             }
         })
-
+        
         this.app.use("/users", userRoute);
-
-        // this.socketIo.on("connection", socket => {
-        //     socket.on("disconnect", () => {
-        //         console.log("usuário desconectado")
-        //     })
-
-        //     socket.on("message", (message) => {
-        //         this.socketIo.emit('message', message)
-        //     })
-        // })
 
         this.userSockets = new Map()
 
         this.socketIo.on("connection", (socket: any) => {
             console.log("Usuário conectado")
             socket.on("login", (userId: string) => {
-                console.log("usuário logado", userId)
                 this.userSockets.set(userId, socket)
+                const serachSocket = this.userSockets.get(userId);
+                
+                console.log("search new 2", userId, serachSocket?.id)
             })
+
+            socket.on("message", (text: string) => {
+                this.socketIo.emit("message", text); 
+            })
+
+            socket.on("message2", ({senderId, recipientId, content}: {senderId: string, recipientId: string, content: string}) => {
+
+                socket.to(recipientId).emit("message", {
+                    senderId,
+                    message: content
+                });
+                 
+            })
+
+            socket.on("privateMessage", ({ senderId, recipientId, content }: {senderId: string, recipientId: string, content: string}) => {
+
+                const recipientSocket = this.userSockets.get(recipientId);
+
+                console.log(recipientSocket?.id)
+
+                console.log("chegou aqui", senderId, recipientId, content)
+                console.log(recipientSocket?.id)
+
+                if (recipientSocket) {
+                    console.log("enviando mensagem", senderId, content)
+                    recipientSocket.emit("privateMessage", { senderId, content });
+
+                    // console.log(teste, "mensagem enviada")
+                } else {
+                    
+                    console.log("O destinatário não está online");
+                }
+                
+            });
 
             socket.on("logout", (userId: string) => {
                 console.log("usuário deslogado", userId)
@@ -55,15 +81,6 @@ class App {
 
 
     }
-    
-
-    // private removeSocket(socket: Socket) {
-    //     this.userSockets.forEach((value, key) => {
-    //         if (value === socket) {
-    //             this.userSockets.delete(key);
-    //         }
-    //     });
-    // }
 
 }
 
